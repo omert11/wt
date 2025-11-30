@@ -653,20 +653,26 @@ cmd_merge() {
         fi
     fi
 
-    # Build merge command
+    # Build merge command (without --delete-branch to avoid worktree conflicts)
     local merge_cmd="gh pr merge --$PR_MERGE_METHOD"
-    if [ "$PR_DELETE_BRANCH" = "true" ]; then
-        merge_cmd="$merge_cmd --delete-branch"
-    fi
+    local delete_remote_branch="$PR_DELETE_BRANCH"
 
+    # Return to main repo BEFORE merging (to avoid worktree conflicts)
+    cd "$main_repo"
+    
     # Merge PR
     print_info "Merging pull request ($PR_MERGE_METHOD)..."
     eval "$merge_cmd"
 
     print_success "PR merged"
-
-    # Return to main repo
-    cd "$main_repo"
+    
+    # Delete remote branch if requested (manual deletion to avoid worktree conflicts)
+    if [ "$delete_remote_branch" = "true" ]; then
+        print_info "Deleting remote branch..."
+        git push origin --delete "$branch_name" 2>/dev/null && \
+        print_success "Remote branch deleted" || \
+        print_info "Remote branch already deleted"
+    fi
 
     # Remove worktree
     print_info "Removing worktree..."
