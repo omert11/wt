@@ -15,8 +15,9 @@ echo ""
 mkdir -p ~/.local/bin
 
 # Download wt script as _wt (internal command)
+# Using timestamp to bust GitHub's CDN cache
 echo "Downloading wt..."
-curl -fsSL https://raw.githubusercontent.com/omert11/wt/refs/heads/main/wt -o ~/.local/bin/_wt
+curl -fsSL "https://raw.githubusercontent.com/omert11/wt/main/wt?t=$(date +%s)" -o ~/.local/bin/_wt
 
 # Make executable
 chmod +x ~/.local/bin/_wt
