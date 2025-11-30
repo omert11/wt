@@ -8,7 +8,7 @@ BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-echo -e "${BLUE}Installing wt - Git Worktree Manager${NC}"
+printf "${BLUE}Installing wt - Git Worktree Manager${NC}\n"
 echo ""
 
 # Create bin directory
@@ -60,25 +60,25 @@ PATH_EXPORT='export PATH="$HOME/.local/bin:$PATH"'
 
 # Check if already installed
 if grep -q "wt - Git Worktree Manager wrapper" "$SHELL_CONFIG" 2>/dev/null; then
-    echo -e "${YELLOW}Shell function already exists in $SHELL_CONFIG${NC}"
+    printf "${YELLOW}Shell function already exists in $SHELL_CONFIG${NC}\n"
 else
     echo "" >> "$SHELL_CONFIG"
     echo "$SHELL_FUNCTION" >> "$SHELL_CONFIG"
-    echo -e "${GREEN}Added wt function to $SHELL_CONFIG${NC}"
+    printf "${GREEN}Added wt function to $SHELL_CONFIG${NC}\n"
 fi
 
 # Check PATH
 if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
     if ! grep -q '.local/bin' "$SHELL_CONFIG" 2>/dev/null; then
         echo "$PATH_EXPORT" >> "$SHELL_CONFIG"
-        echo -e "${GREEN}Added ~/.local/bin to PATH in $SHELL_CONFIG${NC}"
+        printf "${GREEN}Added ~/.local/bin to PATH in $SHELL_CONFIG${NC}\n"
     fi
 fi
 
 echo ""
-echo -e "${GREEN}wt installed successfully!${NC}"
+printf "${GREEN}wt installed successfully!${NC}\n"
 echo ""
-echo -e "${YELLOW}To activate now, run:${NC}"
+printf "${YELLOW}To activate now, run:${NC}\n"
 echo "  source $SHELL_CONFIG"
 echo ""
 echo "Or restart your terminal."
