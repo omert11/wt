@@ -64,6 +64,8 @@ fi
 
 # Add source line if not exists
 if ! grep -q "wt.sh" "$SHELL_CONFIG" 2>/dev/null; then
+    # Ensure file ends with newline before appending
+    [ -n "$(tail -c 1 "$SHELL_CONFIG" 2>/dev/null)" ] && echo "" >> "$SHELL_CONFIG"
     echo "$SOURCE_LINE" >> "$SHELL_CONFIG"
     printf "${GREEN}Added source line to $SHELL_CONFIG${NC}\n"
 else
@@ -73,6 +75,7 @@ fi
 # Check PATH
 if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
     if ! grep -q '.local/bin' "$SHELL_CONFIG" 2>/dev/null; then
+        [ -n "$(tail -c 1 "$SHELL_CONFIG" 2>/dev/null)" ] && echo "" >> "$SHELL_CONFIG"
         echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$SHELL_CONFIG"
         printf "${GREEN}Added ~/.local/bin to PATH${NC}\n"
     fi
