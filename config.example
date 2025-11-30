@@ -33,14 +33,6 @@ WORKTREE_DIR_PATTERN="../{project}-worktrees"
 BRANCH_PREFIX="feature/"
 
 # ==========================================
-# Claude Code Integration
-# ==========================================
-
-# Auto-open Claude Code after creating worktree
-# Options: true, false
-AUTO_CLAUDE=true
-
-# ==========================================
 # GitHub PR Settings
 # ==========================================
 

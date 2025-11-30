@@ -1,5 +1,5 @@
 #!/bin/bash
-# wt - Universal Git Worktree Manager with Claude Code Integration
+# wt - Universal Git Worktree Manager
 # Supports: Flutter, npm, Rust, Python/Django, Go, and generic projects
 
 set -e
@@ -26,9 +26,6 @@ COPY_FILES=(
 # Worktree settings
 WORKTREE_DIR_PATTERN="../{project}-worktrees"
 BRANCH_PREFIX="feature/"
-
-# Claude integration
-AUTO_CLAUDE=true
 
 # PR settings
 PR_MERGE_METHOD="squash"
@@ -226,7 +223,7 @@ show_help() {
     echo "  remove, rm <name>          Remove a worktree"
     echo "  clean                      Remove all worktrees"
     echo "  path, p    <name>          Print worktree path"
-    echo "  go, g      <name>          Open Claude in existing worktree"
+    echo "  go, g      <name>          Change directory to worktree"
     echo "  merge, m   [name]          Create PR, merge, and cleanup worktree"
     echo "  status, st                 Show status of all worktrees"
     echo "  type                       Show detected project type"
@@ -237,9 +234,9 @@ show_help() {
     echo "  Flutter, Rust, npm/yarn/pnpm/bun, Python/Django, Go, Ruby, PHP"
     echo ""
     echo -e "${YELLOW}Examples:${NC}"
-    echo "  wt new auth                # Create feature/auth worktree + setup + claude"
+    echo "  wt new auth                # Create feature/auth worktree + setup"
     echo "  wt new fix-bug main        # Create from main branch"
-    echo "  wt go auth                 # Open Claude in auth worktree"
+    echo "  wt go auth                 # Go to auth worktree"
     echo "  wt merge auth              # PR create → merge → cleanup"
     echo "  wt config edit             # Edit global config"
     echo "  wt ls                      # List worktrees"
@@ -309,26 +306,19 @@ cmd_new() {
 
     echo ""
     print_success "Worktree ready: $worktree_path"
-
-    # Start Claude Code (if enabled)
-    if [ "$AUTO_CLAUDE" = "true" ]; then
-        print_info "Starting Claude Code..."
-        cd "$main_repo" && cd "$worktree_path" && exec claude
-    else
-        echo ""
-        echo -e "${YELLOW}To enter worktree:${NC}"
-        echo "  cd $worktree_path"
-    fi
+    echo ""
+    echo -e "${YELLOW}To enter worktree:${NC}"
+    echo "  wt go $name"
 }
 
-# Go to existing worktree with Claude
+# Go to existing worktree (outputs cd command for shell function)
 cmd_go() {
     ensure_git_repo
 
     local name=$1
 
     if [ -z "$name" ]; then
-        print_error "Name required. Usage: wt go <name>"
+        print_error "Name required. Usage: wt go <name>" >&2
         exit 1
     fi
 
@@ -336,14 +326,14 @@ cmd_go() {
     local worktree_path="$worktree_base/$name"
 
     if [ ! -d "$worktree_path" ]; then
-        print_error "Worktree not found: $name"
-        echo "Available worktrees:"
-        cmd_list
+        print_error "Worktree not found: $name" >&2
+        echo "Available worktrees:" >&2
+        cmd_list >&2
         exit 1
     fi
 
-    print_info "Opening Claude in: $worktree_path"
-    cd "$worktree_path" && exec claude
+    # Output cd command for eval by shell function
+    echo "cd '$worktree_path'"
 }
 
 # List worktrees
@@ -539,9 +529,6 @@ WORKTREE_DIR_PATTERN="../{project}-worktrees"
 # Branch prefix for new worktrees
 BRANCH_PREFIX="feature/"
 
-# Auto-open Claude Code after creating worktree
-AUTO_CLAUDE=true
-
 # PR merge method: squash, merge, rebase
 PR_MERGE_METHOD="squash"
 
@@ -567,7 +554,6 @@ EOF
             echo "  COPY_FILES: ${COPY_FILES[*]}"
             echo "  WORKTREE_DIR_PATTERN: $WORKTREE_DIR_PATTERN"
             echo "  BRANCH_PREFIX: $BRANCH_PREFIX"
-            echo "  AUTO_CLAUDE: $AUTO_CLAUDE"
             echo "  PR_MERGE_METHOD: $PR_MERGE_METHOD"
             echo "  PR_DELETE_BRANCH: $PR_DELETE_BRANCH"
             echo "  PR_AUTO_MERGE: $PR_AUTO_MERGE"
