@@ -58,14 +58,17 @@ SHELL_CONFIG=$(detect_shell_config)
 # Check if PATH includes ~/.local/bin
 PATH_EXPORT='export PATH="$HOME/.local/bin:$PATH"'
 
-# Check if already installed
+# Remove old function if exists, then add new one
 if grep -q "wt - Git Worktree Manager wrapper" "$SHELL_CONFIG" 2>/dev/null; then
-    printf "${YELLOW}Shell function already exists in $SHELL_CONFIG${NC}\n"
-else
-    echo "" >> "$SHELL_CONFIG"
-    echo "$SHELL_FUNCTION" >> "$SHELL_CONFIG"
-    printf "${GREEN}Added wt function to $SHELL_CONFIG${NC}\n"
+    printf "${YELLOW}Updating existing wt function in $SHELL_CONFIG${NC}\n"
+    # Remove old function block (from comment to closing brace)
+    sed -i.bak '/# wt - Git Worktree Manager wrapper/,/^}/d' "$SHELL_CONFIG"
+    rm -f "$SHELL_CONFIG.bak"
 fi
+
+echo "" >> "$SHELL_CONFIG"
+echo "$SHELL_FUNCTION" >> "$SHELL_CONFIG"
+printf "${GREEN}Added wt function to $SHELL_CONFIG${NC}\n"
 
 # Check PATH
 if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
