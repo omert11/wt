@@ -654,7 +654,7 @@ cmd_merge() {
     fi
 
     # Build merge command (without --delete-branch to avoid worktree conflicts)
-    local merge_cmd="gh pr merge --$PR_MERGE_METHOD"
+    local merge_cmd="gh pr merge $branch_name --$PR_MERGE_METHOD"
     local delete_remote_branch="$PR_DELETE_BRANCH"
 
     # Return to main repo BEFORE merging (to avoid worktree conflicts)
