@@ -15,7 +15,7 @@ mkdir -p ~/.local/bin
 
 # Download wt
 echo "Downloading wt..."
-curl -fsSL https://raw.githubusercontent.com/omert11/wt/main/wt -o ~/.local/bin/wt
+curl -fsSL https://raw.githubusercontent.com/omert11/wt/refs/heads/main/wt -o ~/.local/bin/wt
 
 # Make executable
 chmod +x ~/.local/bin/wt
