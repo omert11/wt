@@ -224,6 +224,7 @@ show_help() {
     echo "  clean                      Remove all worktrees"
     echo "  path, p    <name>          Print worktree path"
     echo "  go, g      <name>          Change directory to worktree"
+    echo "  claude, c  [name]          Open Claude Code in worktree"
     echo "  merge, m   [name]          Create PR, merge, and cleanup worktree"
     echo "  status, st                 Show status of all worktrees"
     echo "  type                       Show detected project type"
@@ -237,6 +238,7 @@ show_help() {
     echo "  wt new auth                # Create feature/auth worktree + setup"
     echo "  wt new fix-bug main        # Create from main branch"
     echo "  wt go auth                 # Go to auth worktree"
+    echo "  wt claude auth             # Open Claude Code in auth worktree"
     echo "  wt merge auth              # PR create → merge → cleanup"
     echo "  wt config edit             # Edit global config"
     echo "  wt ls                      # List worktrees"
@@ -334,6 +336,38 @@ cmd_go() {
 
     # Output cd command for eval by shell function
     echo "cd '$worktree_path'"
+}
+
+# Open Claude Code in worktree (outputs cd && claude command for shell function)
+cmd_claude() {
+    ensure_git_repo
+
+    local name=$1
+    local worktree_base=$(get_worktree_base)
+    local worktree_path
+
+    if [ -z "$name" ]; then
+        # If no name, use current directory if it's a worktree
+        local current_dir=$(pwd)
+        if [[ "$current_dir" == *"$worktree_base"* ]]; then
+            worktree_path="$current_dir"
+        else
+            print_error "Name required or run from within a worktree. Usage: wt claude <name>" >&2
+            exit 1
+        fi
+    else
+        worktree_path="$worktree_base/$name"
+    fi
+
+    if [ ! -d "$worktree_path" ]; then
+        print_error "Worktree not found: $name" >&2
+        echo "Available worktrees:" >&2
+        cmd_list >&2
+        exit 1
+    fi
+
+    # Output cd && claude command for eval by shell function
+    echo "cd '$worktree_path' && claude"
 }
 
 # List worktrees
@@ -687,6 +721,9 @@ case "${1:-help}" in
         ;;
     go|g)
         cmd_go "$2"
+        ;;
+    claude|c)
+        cmd_claude "$2"
         ;;
     list|ls)
         cmd_list

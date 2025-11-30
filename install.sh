@@ -26,7 +26,7 @@ chmod +x ~/.local/bin/_wt
 SHELL_FUNCTION='
 # wt - Git Worktree Manager wrapper
 wt() {
-    if [[ "$1" == "go" || "$1" == "g" ]]; then
+    if [[ "$1" == "go" || "$1" == "g" || "$1" == "claude" || "$1" == "c" ]]; then
         local cmd
         cmd=$(_wt "$@")
         if [[ $? -eq 0 && -n "$cmd" ]]; then
