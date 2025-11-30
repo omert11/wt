@@ -100,27 +100,67 @@ your-project/                    # Main repo
 
 ## Configuration
 
-Edit `~/.local/bin/wt` to customize:
+wt uses a layered config system:
 
-### Folders to Copy
+1. **Default config** - Built into the script
+2. **Global config** - `~/.config/wt/config`
+3. **Project config** - `.wtconfig` in project root
+
+### Managing Config
 
 ```bash
+# Show current configuration
+wt config
+
+# Edit global config (creates if not exists)
+wt config edit
+```
+
+### Config Options
+
+```bash
+# Folders to copy from main repo to worktree
 COPY_FOLDERS=(
     ".vscode"
     ".serena"
     ".claude"
     ".idea"
 )
-```
 
-### Files to Copy
-
-```bash
+# Files to copy from main repo to worktree
 COPY_FILES=(
     ".env"
     ".env.local"
     ".editorconfig"
 )
+
+# Worktree directory pattern
+WORKTREE_DIR_PATTERN="../{project}-worktrees"
+
+# Branch prefix for new worktrees
+BRANCH_PREFIX="feature/"
+
+# Auto-open Claude Code after creating worktree
+AUTO_CLAUDE=true
+
+# PR merge method: squash, merge, rebase
+PR_MERGE_METHOD="squash"
+
+# Delete branch after merge
+PR_DELETE_BRANCH=true
+
+# Auto-confirm merge (skip confirmation prompt)
+PR_AUTO_MERGE=false
+```
+
+### Project-Specific Config
+
+Create a `.wtconfig` file in your project root to override settings per project:
+
+```bash
+# .wtconfig
+BRANCH_PREFIX="fix/"
+AUTO_CLAUDE=false
 ```
 
 ## Supported Project Types

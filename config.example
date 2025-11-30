@@ -1,0 +1,54 @@
+# wt configuration file
+# Copy to ~/.config/wt/config
+
+# ==========================================
+# Folders to copy from main repo to worktree
+# ==========================================
+COPY_FOLDERS=(
+    ".vscode"
+    ".serena"
+    ".claude"
+    ".idea"
+)
+
+# ==========================================
+# Files to copy from main repo to worktree
+# ==========================================
+COPY_FILES=(
+    ".env"
+    ".env.local"
+    ".editorconfig"
+)
+
+# ==========================================
+# Worktree Settings
+# ==========================================
+
+# Worktree directory pattern (relative to project)
+# Default: "../{project}-worktrees"
+WORKTREE_DIR_PATTERN="../{project}-worktrees"
+
+# Branch prefix for new worktrees
+# Default: "feature/"
+BRANCH_PREFIX="feature/"
+
+# ==========================================
+# Claude Code Integration
+# ==========================================
+
+# Auto-open Claude Code after creating worktree
+# Options: true, false
+AUTO_CLAUDE=true
+
+# ==========================================
+# GitHub PR Settings
+# ==========================================
+
+# Merge method: squash, merge, rebase
+PR_MERGE_METHOD="squash"
+
+# Delete branch after merge
+PR_DELETE_BRANCH=true
+
+# Auto-confirm merge (skip confirmation prompt)
+PR_AUTO_MERGE=false
