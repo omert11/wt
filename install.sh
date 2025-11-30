@@ -25,7 +25,7 @@ echo "Creating shell wrapper..."
 cat > ~/.local/bin/wt.sh << 'FUNC'
 # wt - Git Worktree Manager wrapper
 wt() {
-    if [[ "$1" == "go" || "$1" == "g" || "$1" == "claude" || "$1" == "c" ]]; then
+    if [[ "$1" == "go" || "$1" == "g" || "$1" == "claude" || "$1" == "c" || "$1" == "top" ]]; then
         local cmd
         cmd=$(_wt "$@")
         if [[ $? -eq 0 && -n "$cmd" ]]; then
@@ -61,6 +61,7 @@ if [[ -n "$ZSH_VERSION" ]]; then
             'g:Change directory to worktree (alias)'
             'claude:Open Claude Code in worktree'
             'c:Open Claude Code in worktree (alias)'
+            'top:Go to main repo directory'
             'list:List all worktrees'
             'ls:List all worktrees (alias)'
             'remove:Remove a worktree'
@@ -104,7 +105,7 @@ elif [[ -n "$BASH_VERSION" ]]; then
         COMPREPLY=()
         cur="${COMP_WORDS[COMP_CWORD]}"
         prev="${COMP_WORDS[COMP_CWORD-1]}"
-        commands="new n go g claude c list ls remove rm clean path p status st type t merge m config cfg help h"
+        commands="new n go g claude c top list ls remove rm clean path p status st type t merge m config cfg help h"
         worktree_cmds="go g claude c remove rm path p merge m"
 
         if [[ ${COMP_CWORD} -eq 1 ]]; then

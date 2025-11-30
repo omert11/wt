@@ -225,6 +225,7 @@ show_help() {
     echo "  path, p    <name>          Print worktree path"
     echo "  go, g      <name>          Change directory to worktree"
     echo "  claude, c  [name]          Open Claude Code in worktree"
+    echo "  top                        Go to main repo directory"
     echo "  merge, m   [name]          Create PR, merge, and cleanup worktree"
     echo "  status, st                 Show status of all worktrees"
     echo "  type                       Show detected project type"
@@ -368,6 +369,13 @@ cmd_claude() {
 
     # Output cd && claude command for eval by shell function
     echo "cd '$worktree_path' && claude"
+}
+
+# Go to main repo (top-level directory)
+cmd_top() {
+    ensure_git_repo
+    local main_repo=$(get_main_repo)
+    echo "cd '$main_repo'"
 }
 
 # List worktrees
@@ -724,6 +732,9 @@ case "${1:-help}" in
         ;;
     claude|c)
         cmd_claude "$2"
+        ;;
+    top)
+        cmd_top
         ;;
     list|ls)
         cmd_list
