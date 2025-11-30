@@ -36,7 +36,7 @@ cat >> ~/.zshrc << 'EOF'
 
 # wt - Git Worktree Manager wrapper
 wt() {
-    if [[ "$1" == "go" || "$1" == "g" ]]; then
+    if [[ "$1" == "go" || "$1" == "g" || "$1" == "claude" || "$1" == "c" ]]; then
         local cmd
         cmd=$(_wt "$@")
         if [[ $? -eq 0 && -n "$cmd" ]]; then
@@ -63,6 +63,7 @@ source ~/.zshrc
 |---------|-------|-------------|
 | `wt new <name> [base]` | `n` | Create new worktree from branch (default: main) |
 | `wt go <name>` | `g` | Change directory to worktree |
+| `wt claude [name]` | `c` | Open Claude Code in worktree |
 | `wt merge [name]` | `m` | Create PR, merge, and cleanup worktree |
 | `wt list` | `ls` | List all worktrees |
 | `wt status` | `st` | Show status of all worktrees |
@@ -83,6 +84,9 @@ wt new bugfix develop
 
 # Go to existing worktree
 wt go auth
+
+# Open Claude Code in worktree
+wt claude auth
 
 # Complete workflow: PR → merge → cleanup
 wt merge auth
