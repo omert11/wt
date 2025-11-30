@@ -200,6 +200,24 @@ copy_config_items() {
     fi
 }
 
+# Add worktree to VSCode workspace (if running in VSCode terminal)
+add_to_vscode_workspace() {
+    local worktree_path="$1"
+
+    if [[ "$TERM_PROGRAM" == "vscode" ]]; then
+        if command -v code &> /dev/null; then
+            read -p "Add to VSCode workspace? [Y/n] " -n 1 -r
+            echo
+            if [[ ! $REPLY =~ ^[Nn]$ ]]; then
+                code --add "$worktree_path"
+                print_success "Added to VSCode workspace"
+            fi
+        else
+            print_warn "VSCode 'code' command not found in PATH"
+        fi
+    fi
+}
+
 # Get worktree base directory
 get_worktree_base() {
     local project_name=$(get_project_name)
@@ -306,6 +324,9 @@ cmd_new() {
 
     # Setup project
     setup_project "$project_type" "$worktree_path"
+
+    # Add to VSCode workspace if running in VSCode terminal
+    add_to_vscode_workspace "$worktree_path"
 
     echo ""
     print_success "Worktree ready: $worktree_path"
