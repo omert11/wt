@@ -65,9 +65,7 @@ detect_project_type() {
         echo "flutter"
     elif [ -f "Cargo.toml" ]; then
         echo "rust"
-    elif [ -f "package.json" ]; then
-        echo "npm"
-    elif [ -f "pyproject.toml" ] || [ -f "setup.py" ] || [ -f "requirements.txt" ]; then
+    elif [ -f "requirements.txt" ]; then
         echo "python"
     elif [ -f "go.mod" ]; then
         echo "go"
@@ -75,6 +73,8 @@ detect_project_type() {
         echo "ruby"
     elif [ -f "composer.json" ]; then
         echo "php"
+    elif [ -f "package.json" ]; then
+        echo "npm"
     else
         echo "generic"
     fi
@@ -130,22 +130,20 @@ setup_project() {
             ;;
         python)
             print_info "Python project detected"
-            if [ -f "pyproject.toml" ]; then
-                if grep -q "poetry" pyproject.toml 2>/dev/null; then
-                    print_info "Running poetry install..."
-                    poetry install > /dev/null 2>&1
-                elif grep -q "uv" pyproject.toml 2>/dev/null || [ -f "uv.lock" ]; then
-                    print_info "Running uv sync..."
-                    uv sync > /dev/null 2>&1
+            if [ -f "requirements.txt" ]; then
+                if command -v uv &> /dev/null; then
+                    print_info "Running uv pip install..."
+                    uv venv .venv
+                    source .venv/bin/activate
+                    uv pip install -r requirements.txt > /dev/null 2>&1
                 else
                     print_info "Running pip install..."
-                    pip install -e . > /dev/null 2>&1
+                    python3 -m venv .venv
+                    source .venv/bin/activate
+                    pip install -r requirements.txt > /dev/null 2>&1
                 fi
-            elif [ -f "requirements.txt" ]; then
-                print_info "Running pip install..."
-                pip install -r requirements.txt > /dev/null 2>&1
+                print_success "Dependencies installed"
             fi
-            print_success "Dependencies installed"
             ;;
         go)
             print_info "Go project detected"
@@ -298,7 +296,9 @@ cmd_new() {
     ensure_worktree_base
 
     local worktree_base=$(get_worktree_base)
-    local worktree_path="$worktree_base/$name"
+    # Convert to absolute path for reliable use after cd
+    mkdir -p "$worktree_base"
+    local worktree_path="$(cd "$worktree_base" && pwd)/$name"
     local branch_name="${BRANCH_PREFIX}$name"
     local main_repo=$(get_main_repo)
     local project_type=$(detect_project_type)
