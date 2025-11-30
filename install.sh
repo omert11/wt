@@ -11,19 +11,18 @@ NC='\033[0m'
 printf "${BLUE}Installing wt - Git Worktree Manager${NC}\n"
 echo ""
 
-# Create bin directory
+# Create directories
 mkdir -p ~/.local/bin
 
 # Download wt script as _wt (internal command)
 # Using timestamp to bust GitHub's CDN cache
 echo "Downloading wt..."
 curl -fsSL "https://raw.githubusercontent.com/omert11/wt/main/wt?t=$(date +%s)" -o ~/.local/bin/_wt
-
-# Make executable
 chmod +x ~/.local/bin/_wt
 
-# Shell function to add
-SHELL_FUNCTION='
+# Create shell wrapper function file
+echo "Creating shell wrapper..."
+cat > ~/.local/bin/wt.sh << 'FUNC'
 # wt - Git Worktree Manager wrapper
 wt() {
     if [[ "$1" == "go" || "$1" == "g" || "$1" == "claude" || "$1" == "c" ]]; then
@@ -36,9 +35,9 @@ wt() {
         _wt "$@"
     fi
 }
-'
+FUNC
 
-# Detect shell and config file
+# Detect shell config file
 detect_shell_config() {
     if [[ -n "$ZSH_VERSION" ]] || [[ "$SHELL" == *"zsh"* ]]; then
         echo "$HOME/.zshrc"
@@ -54,27 +53,28 @@ detect_shell_config() {
 }
 
 SHELL_CONFIG=$(detect_shell_config)
+SOURCE_LINE='[ -f ~/.local/bin/wt.sh ] && source ~/.local/bin/wt.sh'
 
-# Check if PATH includes ~/.local/bin
-PATH_EXPORT='export PATH="$HOME/.local/bin:$PATH"'
-
-# Remove old function if exists, then add new one
-if grep -q "wt - Git Worktree Manager wrapper" "$SHELL_CONFIG" 2>/dev/null; then
-    printf "${YELLOW}Updating existing wt function in $SHELL_CONFIG${NC}\n"
-    # Remove old function block (from comment to closing brace)
+# Remove old inline function if exists (cleanup from previous installs)
+if grep -q "# wt - Git Worktree Manager wrapper" "$SHELL_CONFIG" 2>/dev/null; then
+    printf "${YELLOW}Removing old inline function from $SHELL_CONFIG${NC}\n"
     sed -i.bak '/# wt - Git Worktree Manager wrapper/,/^}/d' "$SHELL_CONFIG"
     rm -f "$SHELL_CONFIG.bak"
 fi
 
-echo "" >> "$SHELL_CONFIG"
-echo "$SHELL_FUNCTION" >> "$SHELL_CONFIG"
-printf "${GREEN}Added wt function to $SHELL_CONFIG${NC}\n"
+# Add source line if not exists
+if ! grep -q "wt.sh" "$SHELL_CONFIG" 2>/dev/null; then
+    echo "$SOURCE_LINE" >> "$SHELL_CONFIG"
+    printf "${GREEN}Added source line to $SHELL_CONFIG${NC}\n"
+else
+    printf "${YELLOW}Source line already exists in $SHELL_CONFIG${NC}\n"
+fi
 
 # Check PATH
 if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
     if ! grep -q '.local/bin' "$SHELL_CONFIG" 2>/dev/null; then
-        echo "$PATH_EXPORT" >> "$SHELL_CONFIG"
-        printf "${GREEN}Added ~/.local/bin to PATH in $SHELL_CONFIG${NC}\n"
+        echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$SHELL_CONFIG"
+        printf "${GREEN}Added ~/.local/bin to PATH${NC}\n"
     fi
 fi
 

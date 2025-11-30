@@ -31,9 +31,8 @@ mkdir -p ~/.local/bin
 cp wt ~/.local/bin/_wt
 chmod +x ~/.local/bin/_wt
 
-# Add shell function to your shell config (~/.zshrc or ~/.bashrc)
-cat >> ~/.zshrc << 'EOF'
-
+# Create shell wrapper function
+cat > ~/.local/bin/wt.sh << 'EOF'
 # wt - Git Worktree Manager wrapper
 wt() {
     if [[ "$1" == "go" || "$1" == "g" || "$1" == "claude" || "$1" == "c" ]]; then
@@ -48,7 +47,8 @@ wt() {
 }
 EOF
 
-# Add to PATH (if not already)
+# Add to shell config (~/.zshrc or ~/.bashrc)
+echo '[ -f ~/.local/bin/wt.sh ] && source ~/.local/bin/wt.sh' >> ~/.zshrc
 echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
 
 # Reload shell
