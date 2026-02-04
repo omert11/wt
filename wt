@@ -962,9 +962,29 @@ cmd_merge() {
     
     # Merge PR
     print_info "Merging pull request ($PR_MERGE_METHOD)..."
-    eval "$merge_cmd"
-
-    print_success "PR merged"
+    local merge_output
+    if merge_output=$(eval "$merge_cmd" 2>&1); then
+        print_success "PR merged"
+    else
+        if echo "$merge_output" | grep -qi "admin"; then
+            print_warn "Merge failed due to branch protection rules."
+            echo -e "$merge_output"
+            echo ""
+            read -p "Merge with admin override? [y/N] " -n 1 -r
+            echo
+            if [[ $REPLY =~ ^[Yy]$ ]]; then
+                eval "$merge_cmd --admin"
+                print_success "PR merged (admin override)"
+            else
+                print_info "Merge cancelled"
+                exit 1
+            fi
+        else
+            print_error "Merge failed:"
+            echo -e "$merge_output"
+            exit 1
+        fi
+    fi
     
     # Delete remote branch if requested (manual deletion to avoid worktree conflicts)
     if [ "$delete_remote_branch" = "true" ]; then
