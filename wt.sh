@@ -50,6 +50,7 @@ if [[ -n "$ZSH_VERSION" ]]; then
             't:Show detected project type (alias)'
             'merge:Create PR, merge, and cleanup'
             'm:Create PR, merge, and cleanup (alias)'
+            'init:Initialize wt for this project'
             'config:Show or edit configuration'
             'cfg:Show or edit configuration (alias)'
             'help:Show help'
@@ -80,7 +81,7 @@ elif [[ -n "$BASH_VERSION" ]]; then
         COMPREPLY=()
         cur="${COMP_WORDS[COMP_CWORD]}"
         prev="${COMP_WORDS[COMP_CWORD-1]}"
-        commands="new n go g claude c top list ls remove rm clean path p status st type t merge m config cfg help h"
+        commands="new n go g claude c top list ls remove rm clean path p status st type t merge m init config cfg help h"
         worktree_cmds="go g claude c remove rm path p merge m"
 
         if [[ ${COMP_CWORD} -eq 1 ]]; then

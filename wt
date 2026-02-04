@@ -11,21 +11,19 @@ set -e
 # Folders to copy
 COPY_FOLDERS=(
     ".vscode"
-    ".serena"
     ".claude"
-    ".idea"
 )
 
 # Files to copy
 COPY_FILES=(
     ".env"
-    ".env.local"
-    ".editorconfig"
 )
 
 # Worktree settings
 WORKTREE_DIR_PATTERN="../{project}-worktrees"
-BRANCH_PREFIX="feature/"
+
+# Commands to run in new worktrees after setup
+INIT_COMMANDS=()
 
 # PR settings
 PR_MERGE_METHOD="squash"
@@ -40,9 +38,16 @@ if [ -f "$CONFIG_FILE" ]; then
     source "$CONFIG_FILE"
 fi
 
-# Load project-local config (if exists)
-if [ -f ".wtconfig" ]; then
-    source ".wtconfig"
+# Load project-local config (if exists, at git repo root)
+_WT_GIT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+if [ -n "$_WT_GIT_ROOT" ] && [ -f "$_WT_GIT_ROOT/.wtconfig" ]; then
+    source "$_WT_GIT_ROOT/.wtconfig"
+else
+    # Try main worktree (when running from a linked worktree)
+    _WT_MAIN_ROOT="$(git worktree list --porcelain 2>/dev/null | head -1 | sed 's/^worktree //' || true)"
+    if [ -n "$_WT_MAIN_ROOT" ] && [ -f "$_WT_MAIN_ROOT/.wtconfig" ]; then
+        source "$_WT_MAIN_ROOT/.wtconfig"
+    fi
 fi
 
 # Colors
@@ -234,7 +239,7 @@ show_help() {
     echo "  wt <command> [options]"
     echo ""
     echo -e "${YELLOW}Commands:${NC}"
-    echo "  new, n     <name> [base]   Create new worktree (default base: main/master)"
+    echo "  new, n     [name] [base]   Create new worktree or pick existing branch"
     echo "  list, ls                   List all worktrees"
     echo "  remove, rm <name>          Remove a worktree"
     echo "  clean                      Remove all worktrees"
@@ -245,6 +250,7 @@ show_help() {
     echo "  merge, m   [name]          Create PR, merge, and cleanup worktree"
     echo "  status, st                 Show status of all worktrees"
     echo "  type                       Show detected project type"
+    echo "  init                       Initialize wt for this project (.wtconfig)"
     echo "  config     [show|edit]     Show or edit configuration"
     echo "  help, h                    Show this help"
     echo ""
@@ -252,14 +258,38 @@ show_help() {
     echo "  Flutter, Rust, npm/yarn/pnpm/bun, Python/Django, Go, Ruby, PHP"
     echo ""
     echo -e "${YELLOW}Examples:${NC}"
-    echo "  wt new auth                # Create feature/auth worktree + setup"
+    echo "  wt init                    # Initialize wt in current project"
+    echo "  wt new auth                # Create new branch 'auth' + worktree"
     echo "  wt new fix-bug main        # Create from main branch"
+    echo "  wt new                     # Pick from existing branches"
     echo "  wt go auth                 # Go to auth worktree"
     echo "  wt claude auth             # Open Claude Code in auth worktree"
     echo "  wt merge auth              # PR create → merge → cleanup"
     echo "  wt config edit             # Edit global config"
     echo "  wt ls                      # List worktrees"
     echo "  wt rm auth                 # Remove auth worktree"
+}
+
+# Check that .wtconfig exists in project root
+require_config() {
+    local git_root
+    git_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+    local config_found=false
+
+    if [ -n "$git_root" ] && [ -f "$git_root/.wtconfig" ]; then
+        config_found=true
+    else
+        local main_root
+        main_root="$(git worktree list --porcelain 2>/dev/null | head -1 | sed 's/^worktree //' || true)"
+        if [ -n "$main_root" ] && [ -f "$main_root/.wtconfig" ]; then
+            config_found=true
+        fi
+    fi
+
+    if [ "$config_found" = false ]; then
+        print_error "No .wtconfig found. Run 'wt init' first." >&2
+        exit 1
+    fi
 }
 
 ensure_git_repo() {
@@ -284,13 +314,57 @@ get_default_branch() {
 # Create new worktree
 cmd_new() {
     ensure_git_repo
+    require_config
 
     local name=$1
     local base=${2:-$(get_default_branch)}
+    local use_existing_branch=false
+    local branch_name=""
+    local dir_name=""
 
     if [ -z "$name" ]; then
-        print_error "Name required. Usage: wt new <name> [base-branch]"
-        exit 1
+        # Interactive: pick from existing branches
+        echo -e "${CYAN}Available branches:${NC}"
+        echo ""
+
+        local branches=()
+        while IFS= read -r b; do
+            branches+=("$b")
+        done < <(git branch --format='%(refname:short)' --sort=-committerdate)
+
+        # Add remote-only branches
+        while IFS= read -r b; do
+            local local_name="${b#origin/}"
+            if [[ "$local_name" != "HEAD" ]] && ! printf '%s\n' "${branches[@]}" | grep -qx "$local_name" 2>/dev/null; then
+                branches+=("$local_name")
+            fi
+        done < <(git branch -r --format='%(refname:short)' --sort=-committerdate 2>/dev/null)
+
+        if [ ${#branches[@]} -eq 0 ]; then
+            print_error "No branches found"
+            exit 1
+        fi
+
+        local i
+        for i in "${!branches[@]}"; do
+            printf "  ${GREEN}%d)${NC} %s\n" $((i+1)) "${branches[$i]}"
+        done
+
+        echo ""
+        read -p "Select branch (number): " selection
+
+        if ! [[ "$selection" =~ ^[0-9]+$ ]] || [ "$selection" -lt 1 ] || [ "$selection" -gt ${#branches[@]} ]; then
+            print_error "Invalid selection"
+            exit 1
+        fi
+
+        branch_name="${branches[$((selection-1))]}"
+        # Directory name: replace slashes with dashes
+        dir_name="${branch_name//\//-}"
+        use_existing_branch=true
+    else
+        branch_name="$name"
+        dir_name="$name"
     fi
 
     ensure_worktree_base
@@ -298,8 +372,7 @@ cmd_new() {
     local worktree_base=$(get_worktree_base)
     # Convert to absolute path for reliable use after cd
     mkdir -p "$worktree_base"
-    local worktree_path="$(cd "$worktree_base" && pwd)/$name"
-    local branch_name="${BRANCH_PREFIX}$name"
+    local worktree_path="$(cd "$worktree_base" && pwd)/$dir_name"
     local main_repo=$(get_main_repo)
     local project_type=$(detect_project_type)
 
@@ -308,15 +381,23 @@ cmd_new() {
         exit 1
     fi
 
-    echo -e "${CYAN}Creating worktree: $name${NC}"
+    echo -e "${CYAN}Creating worktree: $dir_name${NC}"
+    echo -e "Branch: ${GREEN}$branch_name${NC}"
     echo -e "Project type: ${GREEN}$project_type${NC}"
     echo ""
 
-    # Create worktree
-    print_info "Creating branch $branch_name from $base..."
     cd "$main_repo"
-    git worktree add -b "$branch_name" "$worktree_path" "$base" 2>/dev/null || \
-    git worktree add "$worktree_path" "$branch_name"
+
+    if [ "$use_existing_branch" = true ]; then
+        # Use existing branch
+        print_info "Creating worktree from existing branch $branch_name..."
+        git worktree add "$worktree_path" "$branch_name"
+    else
+        # Create new branch
+        print_info "Creating branch $branch_name from $base..."
+        git worktree add -b "$branch_name" "$worktree_path" "$base" 2>/dev/null || \
+        git worktree add "$worktree_path" "$branch_name"
+    fi
     print_success "Worktree created"
 
     # Copy config folders and files
@@ -325,6 +406,16 @@ cmd_new() {
     # Setup project
     setup_project "$project_type" "$worktree_path"
 
+    # Run init commands
+    if [ ${#INIT_COMMANDS[@]} -gt 0 ]; then
+        print_info "Running init commands..."
+        cd "$worktree_path"
+        for init_cmd in "${INIT_COMMANDS[@]}"; do
+            print_info "$ $init_cmd"
+            eval "$init_cmd" || print_warn "Command failed: $init_cmd"
+        done
+    fi
+
     # Add to VSCode workspace if running in VSCode terminal
     add_to_vscode_workspace "$worktree_path"
 
@@ -332,12 +423,13 @@ cmd_new() {
     print_success "Worktree ready: $worktree_path"
     echo ""
     echo -e "${YELLOW}To enter worktree:${NC}"
-    echo "  wt go $name"
+    echo "  wt go $dir_name"
 }
 
 # Go to existing worktree (outputs cd command for shell function)
 cmd_go() {
     ensure_git_repo
+    require_config
 
     local name=$1
 
@@ -363,6 +455,7 @@ cmd_go() {
 # Open Claude Code in worktree (outputs cd && claude command for shell function)
 cmd_claude() {
     ensure_git_repo
+    require_config
 
     local name=$1
     local worktree_base=$(get_worktree_base)
@@ -395,6 +488,7 @@ cmd_claude() {
 # Go to main repo (top-level directory)
 cmd_top() {
     ensure_git_repo
+    require_config
     local main_repo=$(get_main_repo)
     echo "cd '$main_repo'"
 }
@@ -402,6 +496,7 @@ cmd_top() {
 # List worktrees
 cmd_list() {
     ensure_git_repo
+    require_config
 
     echo -e "${CYAN}Git Worktrees:${NC}"
     echo ""
@@ -425,6 +520,7 @@ cmd_list() {
 # Remove worktree
 cmd_remove() {
     ensure_git_repo
+    require_config
 
     local name=$1
 
@@ -435,13 +531,16 @@ cmd_remove() {
 
     local worktree_base=$(get_worktree_base)
     local worktree_path="$worktree_base/$name"
-    local branch_name="${BRANCH_PREFIX}$name"
     local main_repo=$(get_main_repo)
 
     if [ ! -d "$worktree_path" ]; then
         print_error "Worktree not found: $worktree_path"
         exit 1
     fi
+
+    # Get actual branch name from worktree
+    local branch_name
+    branch_name=$(git -C "$worktree_path" branch --show-current 2>/dev/null || true)
 
     echo -e "${CYAN}Removing worktree: $name${NC}"
 
@@ -450,18 +549,21 @@ cmd_remove() {
     print_success "Worktree removed"
 
     # Optionally delete branch
-    read -p "Delete branch $branch_name? [y/N] " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        git branch -D "$branch_name" 2>/dev/null && \
-        print_success "Branch deleted" || \
-        print_warn "Branch not found or already deleted"
+    if [ -n "$branch_name" ]; then
+        read -p "Delete branch $branch_name? [y/N] " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            git branch -D "$branch_name" 2>/dev/null && \
+            print_success "Branch deleted" || \
+            print_warn "Branch not found or already deleted"
+        fi
     fi
 }
 
 # Clean all worktrees
 cmd_clean() {
     ensure_git_repo
+    require_config
 
     echo -e "${CYAN}Cleaning all worktrees...${NC}"
 
@@ -496,6 +598,7 @@ cmd_clean() {
 # Get worktree path
 cmd_path() {
     ensure_git_repo
+    require_config
 
     local name=$1
 
@@ -518,6 +621,7 @@ cmd_path() {
 # Status of all worktrees
 cmd_status() {
     ensure_git_repo
+    require_config
 
     echo -e "${CYAN}Worktree Status:${NC}"
     echo ""
@@ -574,7 +678,6 @@ cmd_config() {
 # Folders to copy from main repo to worktree
 COPY_FOLDERS=(
     ".vscode"
-    ".serena"
     ".claude"
     ".idea"
 )
@@ -582,15 +685,10 @@ COPY_FOLDERS=(
 # Files to copy from main repo to worktree
 COPY_FILES=(
     ".env"
-    ".env.local"
-    ".editorconfig"
 )
 
 # Worktree directory pattern (relative to project)
 WORKTREE_DIR_PATTERN="../{project}-worktrees"
-
-# Branch prefix for new worktrees
-BRANCH_PREFIX="feature/"
 
 # PR merge method: squash, merge, rebase
 PR_MERGE_METHOD="squash"
@@ -616,7 +714,7 @@ EOF
             echo "  COPY_FOLDERS: ${COPY_FOLDERS[*]}"
             echo "  COPY_FILES: ${COPY_FILES[*]}"
             echo "  WORKTREE_DIR_PATTERN: $WORKTREE_DIR_PATTERN"
-            echo "  BRANCH_PREFIX: $BRANCH_PREFIX"
+            echo "  INIT_COMMANDS: ${INIT_COMMANDS[*]:-(none)}"
             echo "  PR_MERGE_METHOD: $PR_MERGE_METHOD"
             echo "  PR_DELETE_BRANCH: $PR_DELETE_BRANCH"
             echo "  PR_AUTO_MERGE: $PR_AUTO_MERGE"
@@ -632,15 +730,99 @@ EOF
     esac
 }
 
+# Initialize project with .wtconfig
+cmd_init() {
+    ensure_git_repo
+
+    local git_root
+    git_root=$(get_main_repo)
+    local config_path="$git_root/.wtconfig"
+    local project_type=$(detect_project_type)
+
+    # Check if .wtconfig already exists
+    if [ -f "$config_path" ]; then
+        print_warn ".wtconfig already exists at: $config_path"
+        read -p "Overwrite? [y/N] " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            print_info "Skipped. Existing config preserved."
+            return
+        fi
+    fi
+
+    cat > "$config_path" << EOF
+# wt project configuration
+# Project type: $project_type
+# Docs: https://github.com/omert11/wt
+
+# ==========================================
+# Folders to copy from main repo to worktree
+# ==========================================
+COPY_FOLDERS=(
+    ".vscode"
+    ".claude"
+)
+
+# ==========================================
+# Files to copy from main repo to worktree
+# ==========================================
+COPY_FILES=(
+    ".env"
+)
+
+# ==========================================
+# Worktree Settings
+# ==========================================
+
+# Worktree directory pattern (relative to project)
+# {project} is replaced with the project directory name
+WORKTREE_DIR_PATTERN="../{project}-worktrees"
+
+# ==========================================
+# Commands to run after worktree creation
+# ==========================================
+# These commands run in the new worktree directory after project setup
+# Example:
+#   INIT_COMMANDS=(
+#       "cp .env.example .env"
+#       "make setup"
+#       "docker compose up -d"
+#   )
+INIT_COMMANDS=()
+
+# ==========================================
+# GitHub PR Settings
+# ==========================================
+
+# Merge method: squash, merge, rebase
+PR_MERGE_METHOD="squash"
+
+# Delete branch after merge
+PR_DELETE_BRANCH=true
+
+# Auto-confirm merge (skip confirmation prompt)
+PR_AUTO_MERGE=false
+EOF
+
+    print_success "Created .wtconfig at: $config_path"
+
+    # Offer to edit
+    read -p "Edit config now? [y/N] " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        ${EDITOR:-nano} "$config_path"
+    fi
+}
+
 # Merge worktree: create PR, merge, cleanup
 cmd_merge() {
     ensure_git_repo
+    require_config
 
     local name=$1
     local worktree_base=$(get_worktree_base)
     local worktree_path="$worktree_base/$name"
     local main_repo=$(get_main_repo)
-    local branch_name="${BRANCH_PREFIX}$name"
 
     if [ -z "$name" ]; then
         # If no name provided, try to detect from current directory
@@ -648,7 +830,6 @@ cmd_merge() {
         if [[ "$current_dir" == *"$worktree_base"* ]]; then
             name=$(basename "$current_dir")
             worktree_path="$current_dir"
-            branch_name="${BRANCH_PREFIX}$name"
         else
             print_error "Name required or run from within a worktree. Usage: wt merge <name>"
             exit 1
@@ -660,7 +841,17 @@ cmd_merge() {
         exit 1
     fi
 
+    # Get actual branch name from worktree
+    local branch_name
+    branch_name=$(git -C "$worktree_path" branch --show-current 2>/dev/null || true)
+
+    if [ -z "$branch_name" ]; then
+        print_error "Could not determine branch name for worktree: $name"
+        exit 1
+    fi
+
     echo -e "${CYAN}Merging worktree: $name${NC}"
+    echo -e "Branch: ${GREEN}$branch_name${NC}"
     echo ""
 
     cd "$worktree_path"
@@ -777,6 +968,9 @@ case "${1:-help}" in
         ;;
     merge|m)
         cmd_merge "$2"
+        ;;
+    init)
+        cmd_init
         ;;
     config|cfg)
         cmd_config "$2"
