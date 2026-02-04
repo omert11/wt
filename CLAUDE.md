@@ -24,13 +24,13 @@ The wrapper function is needed because shell scripts cannot change the parent sh
 | Command | Output | Needs Wrapper |
 |---------|--------|---------------|
 | `init` | Creates `.wtconfig` in project root | No |
-| `new [name]` | Creates worktree (no args = pick existing branch) | No |
+| `new [name] [base]` | Creates worktree (interactive base selection if base omitted) | No |
 | `go <name>` | `cd '/path'` | Yes |
 | `claude [name]` | `cd '/path' && claude` | Yes |
 | `top` | `cd '/main/repo'` | Yes |
 | `list` | Prints worktree list | No |
 | `remove` | Removes worktree | No |
-| `merge` | PR + merge + cleanup | No |
+| `merge` | PR + merge + cleanup (targets saved base branch) | No |
 | `status` | Shows all worktree status | No |
 | `config` | Manages configuration | No |
 
@@ -84,9 +84,23 @@ Auto-completion for zsh and bash:
 - Worktree names for relevant commands
 - Config subcommands
 
+## Base Branch Tracking
+
+When `wt new <name>` creates a branch, the selected base is stored in git config:
+```
+git config branch.<name>.wt-base <base>
+```
+
+`wt merge` reads this config to:
+- Target the correct base in `gh pr create --base`
+- Checkout the correct branch after merge
+
+Falls back to `get_default_branch()` if `wt-base` config is not set (backward compatible).
+
 ## Development Notes
 
 - Errors go to stderr (`>&2`) for commands that output shell code
 - `printf` instead of `echo -e` for cross-shell compatibility
+- `select_base_branch()` outputs UI to stderr, returns branch name via stdout
 - Check newline before appending to shell config files
 - Cache-bust GitHub raw URLs with timestamp query param

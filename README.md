@@ -81,10 +81,10 @@ source ~/.zshrc
 # Initialize wt in your project (required before first use)
 wt init
 
-# Create worktree with new branch
+# Create worktree with new branch (interactive base selection)
 wt new auth
 
-# Create worktree from specific base branch
+# Create worktree from specific base branch (no prompt)
 wt new bugfix develop
 
 # Pick from existing branches interactively
@@ -109,6 +109,28 @@ wt ls
 wt st
 ```
 
+### Interactive Base Branch Selection
+
+When you run `wt new <name>` without specifying a base branch, an interactive menu lets you choose which branch to branch from:
+
+```
+$ wt new auth
+
+Base branch seçin:
+
+  1) main (default)
+  2) develop
+  3) staging
+
+Select base branch (number) [1]: _
+```
+
+- Press Enter to use the default branch
+- Enter a number to select a different base
+- The selected base is saved and used by `wt merge` to target the correct PR base
+
+If you specify the base explicitly (`wt new auth develop`), the prompt is skipped.
+
 ## Workflow
 
 ### Creating a Feature
@@ -117,7 +139,7 @@ wt st
 # 0. Initialize wt (one-time per project)
 wt init
 
-# 1. Create new worktree
+# 1. Create new worktree (select base branch interactively)
 wt new my-feature
 
 # 2. Go to the worktree
@@ -125,7 +147,7 @@ wt go my-feature
 
 # 3. Work on your feature...
 
-# 4. When done, merge and cleanup
+# 4. When done, merge and cleanup (PR targets the correct base)
 wt merge my-feature
 ```
 
