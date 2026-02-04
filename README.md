@@ -6,7 +6,7 @@ A powerful CLI tool for managing Git worktrees with automatic project setup.
 
 - **Universal Project Support**: Flutter, Rust, npm/yarn/pnpm/bun, Python/Django, Go, Ruby, PHP
 - **Automatic Setup**: Runs package manager install after creating worktree
-- **Config Sync**: Copies `.vscode`, `.claude`, `.serena`, `.idea` folders to new worktrees
+- **Config Sync**: Copies `.vscode`, `.claude`, folders to new worktrees
 - **Quick Navigation**: `wt go <name>` instantly changes directory to worktree
 - **GitHub PR Workflow**: Create PR, merge, and cleanup with single command
 
@@ -61,7 +61,8 @@ source ~/.zshrc
 
 | Command | Alias | Description |
 |---------|-------|-------------|
-| `wt new <name> [base]` | `n` | Create new worktree from branch (default: main) |
+| `wt init` | - | Initialize wt for this project (creates `.wtconfig`) |
+| `wt new [name] [base]` | `n` | Create new worktree or pick from existing branches |
 | `wt go <name>` | `g` | Change directory to worktree |
 | `wt claude [name]` | `c` | Open Claude Code in worktree |
 | `wt top` | - | Go to main repo directory |
@@ -77,11 +78,17 @@ source ~/.zshrc
 ### Examples
 
 ```bash
-# Create a new feature worktree
+# Initialize wt in your project (required before first use)
+wt init
+
+# Create worktree with new branch
 wt new auth
 
-# Create worktree from specific branch
+# Create worktree from specific base branch
 wt new bugfix develop
+
+# Pick from existing branches interactively
+wt new
 
 # Go to existing worktree
 wt go auth
@@ -107,6 +114,9 @@ wt st
 ### Creating a Feature
 
 ```bash
+# 0. Initialize wt (one-time per project)
+wt init
+
 # 1. Create new worktree
 wt new my-feature
 
@@ -131,15 +141,20 @@ your-project/                    # Main repo
 
 ## Configuration
 
-wt uses a layered config system:
+wt requires a `.wtconfig` file in your project root. Create it with `wt init`.
+
+Config is layered (later overrides earlier):
 
 1. **Default config** - Built into the script
 2. **Global config** - `~/.config/wt/config`
-3. **Project config** - `.wtconfig` in project root
+3. **Project config** - `.wtconfig` in project root (required, created by `wt init`)
 
 ### Managing Config
 
 ```bash
+# Initialize project config (required before first use)
+wt init
+
 # Show current configuration
 wt config
 
@@ -153,23 +168,22 @@ wt config edit
 # Folders to copy from main repo to worktree
 COPY_FOLDERS=(
     ".vscode"
-    ".serena"
     ".claude"
-    ".idea"
 )
 
 # Files to copy from main repo to worktree
 COPY_FILES=(
     ".env"
-    ".env.local"
-    ".editorconfig"
 )
 
 # Worktree directory pattern
 WORKTREE_DIR_PATTERN="../{project}-worktrees"
 
-# Branch prefix for new worktrees
-BRANCH_PREFIX="feature/"
+# Commands to run after worktree creation
+INIT_COMMANDS=(
+    "cp .env.example .env"
+    "make setup"
+)
 
 # PR merge method: squash, merge, rebase
 PR_MERGE_METHOD="squash"
@@ -183,13 +197,7 @@ PR_AUTO_MERGE=false
 
 ### Project-Specific Config
 
-Create a `.wtconfig` file in your project root to override settings per project:
-
-```bash
-# .wtconfig
-BRANCH_PREFIX="fix/"
-PR_MERGE_METHOD="merge"
-```
+Run `wt init` to create a `.wtconfig` file in your project root. This file is required and should be committed to git so your team shares the same worktree settings.
 
 ## Supported Project Types
 

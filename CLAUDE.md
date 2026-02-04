@@ -23,7 +23,8 @@ The wrapper function is needed because shell scripts cannot change the parent sh
 
 | Command | Output | Needs Wrapper |
 |---------|--------|---------------|
-| `new` | Creates worktree + runs setup | No |
+| `init` | Creates `.wtconfig` in project root | No |
+| `new [name]` | Creates worktree (no args = pick existing branch) | No |
 | `go <name>` | `cd '/path'` | Yes |
 | `claude [name]` | `cd '/path' && claude` | Yes |
 | `top` | `cd '/main/repo'` | Yes |
@@ -35,16 +36,18 @@ The wrapper function is needed because shell scripts cannot change the parent sh
 
 ## Configuration
 
+`.wtconfig` is required in the project root. Create it with `wt init`. All commands except `init`, `type`, `config`, and `help` require this file.
+
 Layered config system (later overrides earlier):
 1. Defaults in script
 2. `~/.config/wt/config` (global)
-3. `.wtconfig` (project-local)
+3. `.wtconfig` (project-local, required)
 
 Key settings:
 - `COPY_FOLDERS` - Folders to copy to new worktrees
 - `COPY_FILES` - Files to copy to new worktrees
 - `WORKTREE_DIR_PATTERN` - Where to create worktrees
-- `BRANCH_PREFIX` - Prefix for new branches
+- `INIT_COMMANDS` - Commands to run after worktree creation
 - `PR_MERGE_METHOD` - squash/merge/rebase
 
 ## Project Detection
