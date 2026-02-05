@@ -898,6 +898,9 @@ cmd_merge() {
         exit 1
     fi
 
+    # Convert to absolute path for reliable use after cd
+    worktree_path="$(cd "$worktree_path" && pwd)"
+
     # Get actual branch name from worktree
     local branch_name
     branch_name=$(git -C "$worktree_path" branch --show-current 2>/dev/null || true)
