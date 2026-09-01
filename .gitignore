@@ -1,4 +1,6 @@
 .DS_Store
 *.swp
 *.swo
-CLAUDE.local.md
+
+# Ajan proje baglami (yerel, birlesik)
+AGENTS.md
